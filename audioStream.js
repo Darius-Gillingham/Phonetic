@@ -1,5 +1,5 @@
 // File: audioStream.js
-// Commit: add transcript broadcast to frontend clients via WebSocket
+// Commit: log call start, transcribed text, and GPT reply during stream
 
 const fs = require('fs');
 const path = require('path');
@@ -12,7 +12,6 @@ const FormData = require('form-data');
 const synthesizeSpeech = require('./tts');
 const getGPTReply = require('./gpt');
 const logTranscript = require('./TranscriptLogger');
-const { broadcastTranscript } = require('./clientStream');
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -30,8 +29,8 @@ module.exports = function setupWebSocket(wss) {
       const message = JSON.parse(msg);
 
       if (message.event === 'start') {
-        console.log('🎙 Call started');
         callSid = message.start.callSid;
+        console.log(`📞 Call started: ${callSid}`);
         accumulated = [];
         accumulatedLength = 0;
         paused = false;
@@ -85,12 +84,11 @@ module.exports = function setupWebSocket(wss) {
                 });
 
                 const transcript = whisperRes.data.text || '';
-                console.log('📝 Transcript:', transcript);
+                console.log('📝 Transcribed text:', transcript);
                 await logTranscript(callSid, transcript);
-                broadcastTranscript(transcript);
 
                 const reply = await getGPTReply(transcript);
-                console.log('🤖 GPT Reply:', reply);
+                console.log('🤖 AI reply:', reply);
 
                 const replyBuffer = await synthesizeSpeech(reply);
                 const audioFilename = `${uuidv4()}.mp3`;

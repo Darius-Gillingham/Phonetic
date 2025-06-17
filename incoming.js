@@ -1,10 +1,11 @@
 // File: incoming.js
-// Commit: extract /incoming route from server.js
+// Commit: log initial GPT greeting before TTS synthesis
 
-const twilio = require('twilio');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const twilio = require('twilio');
+
 const synthesizeSpeech = require('./tts');
 const getGPTReply = require('./gpt');
 
@@ -16,7 +17,11 @@ module.exports = async function incomingHandler(req, res) {
   const twiml = new twilio.twiml.VoiceResponse();
 
   try {
-    const gptGreeting = await getGPTReply('Greet the caller warmly and professionally and please mention that you are the Gillingham Software AI Answering Machine.');
+    const gptGreeting = await getGPTReply(
+      'Greet the caller warmly and professionally and please mention that you are the Gillingham Software AI Answering Machine.'
+    );
+    console.log('🤖 Initial greeting text:', gptGreeting);
+
     const greetingBuffer = await synthesizeSpeech(gptGreeting);
 
     const audioDir = path.join(__dirname, 'audio');
@@ -30,12 +35,14 @@ module.exports = async function incomingHandler(req, res) {
     twiml.play(publicAudioUrl);
     twiml.pause({ length: 1 });
     twiml.redirect(`/stream?sid=${callSid}`);
+
+    res.type('text/xml');
+    res.send(twiml.toString());
   } catch (err) {
     console.error('❌ Error preparing greeting:', err.message);
     twiml.say('Hello. Welcome to Gillingham Software.');
     twiml.redirect(`/stream?sid=${callSid}`);
+    res.type('text/xml');
+    res.send(twiml.toString());
   }
-
-  res.type('text/xml');
-  res.send(twiml.toString());
 };

@@ -1,3 +1,6 @@
+// File: gpt.js
+// Commit: log GPT request and response content for debugging
+
 const axios = require('axios');
 require('dotenv').config();
 
@@ -16,6 +19,8 @@ async function getGPTReply(userMessage, history = []) {
       { role: 'user', content: userMessage }
     ];
 
+    console.log('📤 GPT request:', userMessage);
+
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
@@ -32,6 +37,7 @@ async function getGPTReply(userMessage, history = []) {
     );
 
     const reply = response.data.choices?.[0]?.message?.content?.trim();
+    console.log('🤖 GPT reply:', reply);
     return reply || '[No response generated]';
   } catch (err) {
     console.error('[GPT ERROR]', err.response?.data || err.message);

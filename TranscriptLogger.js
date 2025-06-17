@@ -1,4 +1,6 @@
 // File: TranscriptLogger.js
+// Commit: add logging for successful and failed Supabase transcript inserts
+
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
@@ -21,7 +23,7 @@ async function logTranscript(callSid, text) {
     if (error) {
       console.error('❌ Supabase insert error:', error.message);
     } else {
-      console.log('✅ Transcript saved to Supabase for', callSid);
+      console.log(`✅ Transcript saved to Supabase for ${callSid}`);
     }
   } catch (err) {
     console.error('❌ Supabase log failure:', err.message);
