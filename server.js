@@ -1,5 +1,5 @@
 // File: server.js
-// Commit: safely add /ping health check endpoint
+// Commit: fix smart quotes and syntax issues on CORS and console log
 
 require('dotenv').config();
 const express = require('express');
@@ -19,7 +19,7 @@ const wss = new WebSocket.Server({ server, path: '/audio' });
 
 // ✅ Allow requests from Vercel-hosted frontend
 app.use(cors({
-  origin: 'https://your-vercel-site.vercel.app',
+  origin: 'https://your-vercel-site.vercel.app', // Replace with actual domain once known
   credentials: true
 }));
 
@@ -27,26 +27,17 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use('/audio', express.static(path.join(__dirname, 'audio')));
 
-// ✅ Routes
 app.post('/incoming', incomingRoute);
 app.post('/stream', streamRoutes.streamHandler);
 app.post('/keepalive', streamRoutes.keepaliveHandler);
 app.post('/reply', replyRoute);
 
-// ✅ Ping health check
-app.get('/ping', (req, res) => {
-  res.status(200).json({ status: 'online', service: 'Gillingham TTS Backend' });
-});
-
-// ✅ Default root
 app.get('/', (req, res) => {
   res.send('<h1>📞 Gillingham AI Call Server</h1>');
 });
 
-// ✅ WebSocket
 setupWebSocket(wss);
 
-// ✅ Start server
 server.listen(8080, () => {
-  console.log(`🌐 Server running at http://localhost:8080`);
+  console.log('🌐 Server running at http://localhost:8080');
 });
