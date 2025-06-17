@@ -1,11 +1,12 @@
 // File: server.js
-// Commit: split server.js into core + routes + socket boot
+// Commit: add CORS support for hosted Next.js frontend compatibility
 
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const path = require('path');
 const WebSocket = require('ws');
+const cors = require('cors');
 
 const incomingRoute = require('./incoming');
 const streamRoutes = require('./stream');
@@ -15,6 +16,12 @@ const setupWebSocket = require('./audioStream');
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/audio' });
+
+// ✅ Allow requests from Vercel-hosted frontend
+app.use(cors({
+  origin: 'https://your-vercel-site.vercel.app', // Replace with actual domain once known
+  credentials: true
+}));
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
