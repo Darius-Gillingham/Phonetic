@@ -1,5 +1,5 @@
 // File: audioStream.js
-// Commit: extract WebSocket speech processing from server.js
+// Commit: add transcript broadcast to frontend clients via WebSocket
 
 const fs = require('fs');
 const path = require('path');
@@ -12,6 +12,7 @@ const FormData = require('form-data');
 const synthesizeSpeech = require('./tts');
 const getGPTReply = require('./gpt');
 const logTranscript = require('./TranscriptLogger');
+const { broadcastTranscript } = require('./clientStream');
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -30,11 +31,10 @@ module.exports = function setupWebSocket(wss) {
 
       if (message.event === 'start') {
         console.log('🎙 Call started');
-        console.log('🔍 Twilio codec:', message.start.mediaFormat);
+        callSid = message.start.callSid;
         accumulated = [];
         accumulatedLength = 0;
         paused = false;
-        callSid = message.start.callSid;
       }
 
       if (message.event === 'media') {
@@ -87,6 +87,7 @@ module.exports = function setupWebSocket(wss) {
                 const transcript = whisperRes.data.text || '';
                 console.log('📝 Transcript:', transcript);
                 await logTranscript(callSid, transcript);
+                broadcastTranscript(transcript);
 
                 const reply = await getGPTReply(transcript);
                 console.log('🤖 GPT Reply:', reply);
