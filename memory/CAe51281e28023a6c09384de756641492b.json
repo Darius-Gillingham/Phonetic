@@ -1,0 +1,12 @@
+{
+  "history": [
+    {
+      "from": "user",
+      "text": "Hi, I was wondering if the transcription service was working."
+    },
+    {
+      "from": "ai",
+      "text": "Yes, the transcription service is currently working. You can go ahead and use it for your transcription needs. If you encounter any issues or have further questions, feel free to ask."
+    }
+  ]
+}

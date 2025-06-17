@@ -1,0 +1,10 @@
+[
+  {
+    "role": "user",
+    "content": "I was wondering what the capital of Hungary was."
+  },
+  {
+    "role": "ai",
+    "content": "The capital of Hungary is Budapest."
+  }
+]
