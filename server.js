@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-const transcribeAudio = require('./transcribe');
+const { transcribeAudioStream } = require('./audioStream');
 const logTranscript = require('./TranscriptLogger');
 const summarize = require('./summarize');
 const getGPTReply = require('./gpt');
@@ -25,7 +25,7 @@ async function streamHandler(req, res) {
 
     console.log(`🎙️ Audio saved as ${fileId}.mp3 — beginning transcription`);
 
-    const transcript = await transcribeAudio(filePath);
+    const transcript = await transcribeAudioStream(filePath);
     console.log(`📄 Transcription complete: ${transcript}`);
 
     await logTranscript(callSid, transcript);

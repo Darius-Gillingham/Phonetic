@@ -1,6 +1,3 @@
-// File: audioStream.js
-// Commit: log call start, transcribed text, and GPT reply during stream
-
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -19,7 +16,7 @@ module.exports = function setupWebSocket(wss) {
   wss.on('connection', (ws) => {
     console.log('🔌 WebSocket connected');
 
-    const FLUSH_BYTES = 30000;
+    const FLUSH_BYTES = 5000;
     let accumulated = [];
     let accumulatedLength = 0;
     let paused = false;
@@ -31,6 +28,7 @@ module.exports = function setupWebSocket(wss) {
       if (message.event === 'start') {
         callSid = message.start.callSid;
         console.log(`📞 Call started: ${callSid}`);
+        console.log(`🔧 Environment check — OPENAI_API_KEY: ${!!process.env.OPENAI_API_KEY}, PUBLIC_HOST: ${process.env.PUBLIC_HOST}`);
         accumulated = [];
         accumulatedLength = 0;
         paused = false;
@@ -46,6 +44,7 @@ module.exports = function setupWebSocket(wss) {
         accumulatedLength += buffer.length;
 
         if (accumulatedLength >= FLUSH_BYTES) {
+          console.log('🚰 Flushing accumulated audio for transcription...');
           paused = true;
           const combinedBuffer = Buffer.concat(accumulated);
           accumulated = [];
@@ -91,8 +90,11 @@ module.exports = function setupWebSocket(wss) {
                 console.log('🤖 AI reply:', reply);
 
                 const replyBuffer = await synthesizeSpeech(reply);
+                const audioDir = path.join(__dirname, 'audio');
+                if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
+
                 const audioFilename = `${uuidv4()}.mp3`;
-                const audioPath = path.join(__dirname, 'audio', audioFilename);
+                const audioPath = path.join(audioDir, audioFilename);
                 fs.writeFileSync(audioPath, replyBuffer);
 
                 console.log(`🔁 Redirecting to /reply for ${audioFilename}`);
