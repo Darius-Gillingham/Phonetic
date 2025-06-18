@@ -1,3 +1,6 @@
+// File: audioStream.js
+// Commit: refactor to use fileUtils for temp file handling and cleanup
+
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -9,6 +12,7 @@ const FormData = require('form-data');
 const synthesizeSpeech = require('./tts');
 const getGPTReply = require('./gpt');
 const logTranscript = require('./TranscriptLogger');
+const { ensureDirExists, safeUnlink, writeTempFile } = require('./fileUtils');
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -16,7 +20,7 @@ module.exports = function setupWebSocket(wss) {
   wss.on('connection', (ws) => {
     console.log('🔌 WebSocket connected');
 
-    const FLUSH_BYTES = 5000;
+    const FLUSH_BYTES = 30000;
     let accumulated = [];
     let accumulatedLength = 0;
     let paused = false;
@@ -28,7 +32,6 @@ module.exports = function setupWebSocket(wss) {
       if (message.event === 'start') {
         callSid = message.start.callSid;
         console.log(`📞 Call started: ${callSid}`);
-        console.log(`🔧 Environment check — OPENAI_API_KEY: ${!!process.env.OPENAI_API_KEY}, PUBLIC_HOST: ${process.env.PUBLIC_HOST}`);
         accumulated = [];
         accumulatedLength = 0;
         paused = false;
@@ -44,18 +47,14 @@ module.exports = function setupWebSocket(wss) {
         accumulatedLength += buffer.length;
 
         if (accumulatedLength >= FLUSH_BYTES) {
-          console.log('🚰 Flushing accumulated audio for transcription...');
           paused = true;
           const combinedBuffer = Buffer.concat(accumulated);
           accumulated = [];
           accumulatedLength = 0;
 
           const tempDir = path.join(__dirname, 'temp');
-          if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-          const rawPath = path.join(tempDir, `${uuidv4()}.raw`);
-          const wavPath = path.join(tempDir, `${uuidv4()}.wav`);
-          fs.writeFileSync(rawPath, combinedBuffer);
+          const rawPath = writeTempFile(tempDir, combinedBuffer, 'raw');
+          const wavPath = rawPath.replace(/\.raw$/, '.wav');
 
           ffmpeg()
             .input(rawPath)
@@ -64,7 +63,7 @@ module.exports = function setupWebSocket(wss) {
             .toFormat('wav')
             .on('error', (err) => {
               console.error('❌ ffmpeg error:', err.message);
-              if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath);
+              safeUnlink(rawPath);
               paused = false;
             })
             .on('end', async () => {
@@ -90,11 +89,8 @@ module.exports = function setupWebSocket(wss) {
                 console.log('🤖 AI reply:', reply);
 
                 const replyBuffer = await synthesizeSpeech(reply);
-                const audioDir = path.join(__dirname, 'audio');
-                if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
-
                 const audioFilename = `${uuidv4()}.mp3`;
-                const audioPath = path.join(audioDir, audioFilename);
+                const audioPath = path.join(__dirname, 'audio', audioFilename);
                 fs.writeFileSync(audioPath, replyBuffer);
 
                 console.log(`🔁 Redirecting to /reply for ${audioFilename}`);
@@ -114,8 +110,8 @@ module.exports = function setupWebSocket(wss) {
               } catch (err) {
                 console.error('❌ Error in STT/TTS or Twilio update:', err.response?.data || err.message);
               } finally {
-                if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath);
-                if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath);
+                safeUnlink(rawPath);
+                safeUnlink(wavPath);
                 paused = false;
               }
             })

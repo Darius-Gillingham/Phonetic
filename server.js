@@ -1,12 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-const { transcribeAudioStream } = require('./audioStream');
+const transcribeAudio = require('./transcribe');
 const logTranscript = require('./TranscriptLogger');
 const summarize = require('./summarize');
 const getGPTReply = require('./gpt');
 const synthesizeSpeech = require('./tts');
-const { deleteFileLater } = require('./lifecycle');
 
 async function streamHandler(req, res) {
   try {
@@ -25,7 +24,7 @@ async function streamHandler(req, res) {
 
     console.log(`🎙️ Audio saved as ${fileId}.mp3 — beginning transcription`);
 
-    const transcript = await transcribeAudioStream(filePath);
+    const transcript = await transcribeAudio(filePath);
     console.log(`📄 Transcription complete: ${transcript}`);
 
     await logTranscript(callSid, transcript);
@@ -44,7 +43,6 @@ async function streamHandler(req, res) {
 
     console.log('✅ Sending TTS audio buffer back to client');
 
-    deleteFileLater(filePath);
     res.status(200).json({ audio: ttsBuffer.toString('base64') });
   } catch (err) {
     console.error('❌ Error in streamHandler:', err.message);
