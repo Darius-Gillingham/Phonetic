@@ -1,37 +1,62 @@
-require('dotenv').config();
-const express = require('express');
-const http = require('http');
+const fs = require('fs');
 const path = require('path');
-const WebSocket = require('ws');
-const cors = require('cors');
+const { v4: uuidv4 } = require('uuid');
+const transcribeAudio = require('./transcribe');
+const logTranscript = require('./TranscriptLogger');
+const summarize = require('./summarize');
+const getGPTReply = require('./gpt');
+const synthesizeSpeech = require('./tts');
+const { deleteFileLater } = require('./lifecycle');
 
-const incomingRoute = require('./incoming');
-const streamRoutes = require('./stream');
-const replyRoute = require('./reply');
-const setupWebSocket = require('./audioStream');
+async function streamHandler(req, res) {
+  try {
+    console.log('📥 Received audio stream POST');
 
-const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server, path: '/audio' });
+    const audioBuffer = req.body.audio;
+    const callSid = req.body.callSid || 'unknown';
+    if (!audioBuffer) {
+      console.log('❌ No audio buffer received');
+      return res.status(400).json({ error: 'No audio buffer provided' });
+    }
 
-// TEMP: Allow all origins to test Railway behavior
-app.use(cors());
+    const fileId = uuidv4();
+    const filePath = path.join(__dirname, 'audio', `${fileId}.mp3`);
+    fs.writeFileSync(filePath, Buffer.from(audioBuffer, 'base64'));
 
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-app.use('/audio', express.static(path.join(__dirname, 'audio')));
+    console.log(`🎙️ Audio saved as ${fileId}.mp3 — beginning transcription`);
 
-app.post('/incoming', incomingRoute);
-app.post('/stream', streamRoutes.streamHandler);
-app.post('/keepalive', streamRoutes.keepaliveHandler);
-app.post('/reply', replyRoute);
+    const transcript = await transcribeAudio(filePath);
+    console.log(`📄 Transcription complete: ${transcript}`);
 
-app.get('/', (req, res) => {
-  res.send('<h1>📞 Gillingham AI Call Server</h1>');
-});
+    await logTranscript(callSid, transcript);
 
-setupWebSocket(wss);
+    const summary = await summarize(transcript);
+    console.log(`📝 Summary: ${summary}`);
 
-server.listen(8080, () => {
-  console.log(`🌐 Server running at http://localhost:8080`);
-});
+    const reply = await getGPTReply(summary);
+    console.log(`🤖 GPT Reply: ${reply}`);
+
+    const ttsBuffer = await synthesizeSpeech(reply);
+    if (!ttsBuffer) {
+      console.log('❌ Failed to synthesize speech');
+      return res.status(500).json({ error: 'Failed to synthesize reply' });
+    }
+
+    console.log('✅ Sending TTS audio buffer back to client');
+
+    deleteFileLater(filePath);
+    res.status(200).json({ audio: ttsBuffer.toString('base64') });
+  } catch (err) {
+    console.error('❌ Error in streamHandler:', err.message);
+    res.status(500).json({ error: 'Stream handling failed' });
+  }
+}
+
+function keepaliveHandler(req, res) {
+  res.status(200).send('🔁 Keepalive');
+}
+
+module.exports = {
+  streamHandler,
+  keepaliveHandler,
+};
