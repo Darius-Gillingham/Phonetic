@@ -1,6 +1,3 @@
-// File: server.js
-// Commit: fix smart quotes and syntax issues on CORS and console log
-
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -17,11 +14,8 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/audio' });
 
-// ✅ Allow requests from Vercel-hosted frontend
-app.use(cors({
-  origin: 'https://your-vercel-site.vercel.app', // Replace with actual domain once known
-  credentials: true
-}));
+// TEMP: Allow all origins to test Railway behavior
+app.use(cors());
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
@@ -39,5 +33,5 @@ app.get('/', (req, res) => {
 setupWebSocket(wss);
 
 server.listen(8080, () => {
-  console.log('🌐 Server running at http://localhost:8080');
+  console.log(`🌐 Server running at http://localhost:8080`);
 });
