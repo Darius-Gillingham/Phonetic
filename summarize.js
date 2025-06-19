@@ -1,4 +1,6 @@
 // File: summarize.js
+// Commit: add OpenAI-powered summarization function with error handling
+
 const axios = require('axios');
 require('dotenv').config();
 
@@ -28,7 +30,9 @@ async function summarize(text) {
       }
     );
 
-    return response.data.choices?.[0]?.message?.content?.trim() || '[summary unavailable]';
+    const summary = response.data.choices?.[0]?.message?.content?.trim();
+    console.log('🧾 Summary generated:', summary);
+    return summary || '[summary unavailable]';
   } catch (err) {
     console.error('❌ Summarization error:', err.response?.data || err.message);
     return '[summary failed]';

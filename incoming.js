@@ -25,12 +25,18 @@ module.exports = async function incomingHandler(req, res) {
     const greetingBuffer = await synthesizeSpeech(gptGreeting);
 
     const audioDir = path.join(__dirname, 'audio');
-    if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
+    if (!fs.existsSync(audioDir)) {
+      fs.mkdirSync(audioDir, { recursive: true });
+      console.log(`📁 Created audio directory: ${audioDir}`);
+    }
 
     const audioFilename = `${uuidv4()}.mp3`;
     const audioPath = path.join(audioDir, audioFilename);
     fs.writeFileSync(audioPath, greetingBuffer);
+    console.log(`🔊 Greeting audio written to: ${audioPath}`);
+
     const publicAudioUrl = `https://${req.headers.host}/audio/${audioFilename}`;
+    console.log(`🌐 Public audio URL: ${publicAudioUrl}`);
 
     twiml.play(publicAudioUrl);
     twiml.pause({ length: 1 });

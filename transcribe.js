@@ -14,6 +14,8 @@ async function transcribeAudio(filePath) {
     form.append('language', 'en');
     form.append('response_format', 'json');
 
+    console.log(`📤 Sending audio file to Whisper for transcription: ${filePath}`);
+
     const response = await axios.post(
       'https://api.openai.com/v1/audio/transcriptions',
       form,
@@ -25,7 +27,9 @@ async function transcribeAudio(filePath) {
       }
     );
 
-    return response.data.text || '';
+    const transcript = response.data.text || '';
+    console.log('📝 Transcribed text:', transcript);
+    return transcript;
   } catch (err) {
     console.error('❌ Error in transcribeAudio:', err.response?.data || err.message);
     return '';
