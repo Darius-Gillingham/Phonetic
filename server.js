@@ -19,7 +19,7 @@ const wss = new WebSocket.Server({ server, path: '/audio' });
 
 // ✅ Allow requests from Vercel-hosted frontend
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'https://your-vercel-site.vercel.app',
+  origin: process.env.CORS_ORIGIN || 'https://phonetic-front-oppbj4g5q-darius-gillinghams-projects.vercel.app/',
   credentials: true
 }));
 
